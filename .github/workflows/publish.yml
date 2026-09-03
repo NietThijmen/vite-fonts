@@ -23,12 +23,12 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: pnpm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Build
-        run: pnpm build
+        run: npm run build
 
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm publish
+        run: npm publish
