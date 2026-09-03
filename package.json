@@ -1,5 +1,5 @@
 {
-  "name": "vite-plugin-fonts",
+  "name": "vite-plugin-download-fonts",
   "version": "0.1.0",
   "description": "Download web fonts (Google Fonts, Bunny Fonts, and more) into your Vite build output",
   "type": "module",
