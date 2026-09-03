@@ -16,10 +16,9 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '20'
-          cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Run vitest
-        run: pnpm test
+        run: npm run test
