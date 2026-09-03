@@ -8,8 +8,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container:
-      image: oven.sh/fresh:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
