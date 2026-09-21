@@ -2,6 +2,28 @@
   "name": "vite-plugin-download-fonts",
   "version": "0.1.0",
   "description": "Download web fonts (Google Fonts, Bunny Fonts, and more) into your Vite build output",
+  "author": "NietThijmen <53520119+NietThijmen@users.noreply.github.com>",
+  "homepage": "https://github.com/NietThijmen/vite-fonts#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NietThijmen/vite-fonts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NietThijmen/vite-fonts/issues"
+  },
+  "keywords": [
+    "vite",
+    "plugin",
+    "fonts",
+    "google-fonts",
+    "bunny-fonts",
+    "fontshare",
+    "adobe-fonts",
+    "webfonts",
+    "download",
+    "privacy",
+    "performance"
+  ],
   "type": "module",
   "license": "MIT",
   "exports": {
@@ -33,5 +55,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
