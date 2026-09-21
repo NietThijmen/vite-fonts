@@ -16,7 +16,7 @@ Download web fonts from [Google Fonts](https://fonts.google.com), [Bunny Fonts](
 ## Installation
 
 ```sh
-npm install -D vite-plugin-download-fonts
+npm install -D vite-plugin-local-webfonts
 ```
 
 ## Usage
@@ -24,7 +24,7 @@ npm install -D vite-plugin-download-fonts
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
-import fonts, { adobe, bunny, fontshare, google } from 'vite-plugin-download-fonts'
+import fonts, { adobe, bunny, fontshare, google } from 'vite-plugin-local-webfonts'
 
 export default defineConfig({
     plugins: [
@@ -114,7 +114,7 @@ Any source that serves CSS with `@font-face` rules can be added with
 `createCssApiProvider` — no changes to the plugin core required:
 
 ```ts
-import fonts, { createCssApiProvider, defineFont } from 'vite-plugin-download-fonts'
+import fonts, { createCssApiProvider, defineFont } from 'vite-plugin-local-webfonts'
 
 const myFonts = createCssApiProvider({
     name: 'my-fonts',
@@ -149,7 +149,7 @@ export default defineConfig({
 For sources without a CSS API, implement the `FontProvider` interface directly:
 
 ```ts
-import type { FontProvider } from 'vite-plugin-download-fonts'
+import type { FontProvider } from 'vite-plugin-local-webfonts'
 
 const myCdnProvider: FontProvider = {
     name: 'my-cdn',
