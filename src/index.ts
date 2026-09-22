@@ -3,6 +3,7 @@ import fonts from './plugin.js'
 export { fonts }
 export default fonts
 
+export { VIRTUAL_CSS_ID } from './plugin.js'
 export { defineFont } from './config.js'
 export { parseFontFaceCss } from './css-parser.js'
 export { buildCss2Url, createCssApiProvider } from './providers/css-api.js'

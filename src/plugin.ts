@@ -13,6 +13,9 @@ import type {
     ResolvedFontFamily,
 } from './types.js'
 
+export const VIRTUAL_CSS_ID = 'virtual:fonts.css'
+const RESOLVED_VIRTUAL_CSS_ID = '\0' + VIRTUAL_CSS_ID
+
 function withBase(base: string, filePath: string): string {
     if (base === '') {
         return filePath
@@ -96,6 +99,8 @@ export default function fonts(options: FontsPluginOptions): Plugin {
     let fileNames = new Map<string, string>()
     let buildTags: HtmlTagDescriptor[] = []
     let pendingEmissions: { css: string, cssPath: string } | null = null
+    let buildPublicUrlMap: Map<string, string> | null = null
+    let buildCssPublicUrl: string | null = null
     let emitted = false
     let devReady: Promise<void> = Promise.resolve()
     let devFailed = false
@@ -117,6 +122,47 @@ export default function fonts(options: FontsPluginOptions): Plugin {
 
     return {
         name: 'vite-plugin-fonts',
+
+        resolveId(id) {
+            if (id === VIRTUAL_CSS_ID) {
+                return RESOLVED_VIRTUAL_CSS_ID
+            }
+        },
+
+        async load(id) {
+            if (id !== RESOLVED_VIRTUAL_CSS_ID) {
+                return
+            }
+
+            if (definitions.length === 0) {
+                return ''
+            }
+
+            if (config.command === 'build') {
+                if (config.build.ssr) {
+                    return ''
+                }
+
+                // In build, return the generated CSS with public URLs to the
+                // emitted font files. This makes the virtual module importable
+                // from user CSS/JS and lets Vite emit it as a stylesheet asset.
+                return buildPublicUrlMap
+                    ? generateFontCss(resolvedFamilies, buildPublicUrlMap)
+                    : ''
+            }
+
+            if (! dev) {
+                return ''
+            }
+
+            await devReady
+
+            if (devFailed || resolvedFamilies.length === 0) {
+                return ''
+            }
+
+            return generateFontCss(resolvedFamilies, buildDevUrlMap(resolvedFamilies, fileNames))
+        },
 
         configResolved(resolved) {
             config = resolved
@@ -143,12 +189,15 @@ export default function fonts(options: FontsPluginOptions): Plugin {
             const css = generateFontCss(resolvedFamilies, cssUrlMap)
             const cssPath = `${outputDir}/${cssFileName}`
 
+            buildPublicUrlMap = publicUrlMap
+            buildCssPublicUrl = withBase(config.base, cssPath)
+
             buildTags = [
                 ...preloadTags(collectPreloadUrls(resolvedFamilies, publicUrlMap)),
                 {
                     tag: 'link',
                     injectTo: 'head',
-                    attrs: { rel: 'stylesheet', href: withBase(config.base, cssPath) },
+                    attrs: { rel: 'stylesheet', href: buildCssPublicUrl },
                 },
             ]
 
@@ -171,9 +220,12 @@ export default function fonts(options: FontsPluginOptions): Plugin {
 
                         emittedSources.add(file.source)
 
+                        const name = `${outputDir}/${fileNames.get(file.source)}`
+
                         this.emitFile({
                             type: 'asset',
-                            fileName: `${outputDir}/${fileNames.get(file.source)}`,
+                            name,
+                            fileName: name,
                             source: fs.readFileSync(file.source),
                         })
                     }
@@ -182,6 +234,7 @@ export default function fonts(options: FontsPluginOptions): Plugin {
 
             this.emitFile({
                 type: 'asset',
+                name: pendingEmissions.cssPath,
                 fileName: pendingEmissions.cssPath,
                 source: pendingEmissions.css,
             })

@@ -71,6 +71,47 @@ utility class per family:
 
 During `vite dev`, the fonts are served from the dev server and injected into the page automatically.
 
+### Using the fonts without the generated `index.html`
+
+If your site is built with Vite but the final HTML is rendered elsewhere (for example by a backend framework), import the generated font CSS from your own CSS or JavaScript with the virtual module:
+
+```css
+/* src/style.css */
+@import 'virtual:fonts.css';
+```
+
+```ts
+// src/main.ts
+import 'virtual:fonts.css'
+```
+
+During development the virtual module serves the live stylesheet from the dev server. In production it returns the generated `@font-face` CSS, which Vite bundles into your own stylesheet. The referenced font files are still emitted to `dist/fonts/` as usual.
+
+When you consume the fonts through the virtual module, disable automatic HTML injection to avoid loading the same CSS twice:
+
+> **Note on relative `base`** — because the virtual module's CSS is bundled into your own stylesheet, font URLs use your configured `base`. With `base: './'` or `base: ''` the URLs are relative to the emitted stylesheet, so they may not resolve correctly if that stylesheet is placed in a subdirectory such as `assets/`. For relative-base deployments, reference `fonts/fonts.css` directly instead of using the virtual module.
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import fonts, { google } from 'vite-plugin-local-webfonts'
+
+export default defineConfig({
+    plugins: [
+        fonts({
+            inject: false,
+            fonts: [
+                google('Inter', { weights: [400, 700] }),
+            ],
+        }),
+    ],
+})
+```
+
+### Build manifest
+
+All emitted assets — the generated `fonts.css` and every downloaded font file — are registered in Vite's build manifest (`build.manifest`). This makes it straightforward for a backend or custom integration to discover the exact published file names.
+
 ## Font options
 
 | Option      | Default            | Description                                                                 |
