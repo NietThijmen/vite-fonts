@@ -1,5 +1,10 @@
 # Vite font plugin
 
+[![npm version](https://img.shields.io/npm/v/vite-plugin-local-webfonts)](https://www.npmjs.com/package/vite-plugin-local-webfonts)
+[![npm downloads](https://img.shields.io/npm/dm/vite-plugin-local-webfonts)](https://www.npmjs.com/package/vite-plugin-local-webfonts)
+[![license](https://img.shields.io/npm/l/vite-plugin-local-webfonts)](LICENSE)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/vite-plugin-local-webfonts)](https://bundlephobia.com/package/vite-plugin-local-webfonts)
+
 Download web fonts from [Google Fonts](https://fonts.google.com), [Bunny Fonts](https://fonts.bunny.net), [Fontshare](https://www.fontshare.com), [Adobe Fonts](https://fonts.adobe.com), and other sources into your Vite build output — no external CSS requests at runtime, full privacy, and easy to extend with additional font sources.
 
 ## Features
