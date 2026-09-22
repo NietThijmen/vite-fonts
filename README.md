@@ -1,5 +1,6 @@
 # Vite font plugin
 
+[![test status](https://github.com/NietThijmen/vite-fonts/actions/workflows/vitest.yml/badge.svg)](https://github.com/NietThijmen/vite-fonts/actions/workflows/vitest.yml)
 [![npm version](https://img.shields.io/npm/v/vite-plugin-local-webfonts)](https://www.npmjs.com/package/vite-plugin-local-webfonts)
 [![npm downloads](https://img.shields.io/npm/dm/vite-plugin-local-webfonts)](https://www.npmjs.com/package/vite-plugin-local-webfonts)
 [![license](https://img.shields.io/npm/l/vite-plugin-local-webfonts)](LICENSE)
