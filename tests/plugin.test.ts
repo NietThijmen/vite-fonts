@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { build } from 'vite'
+import type { ResolvedConfig } from 'vite'
 import fonts, { VIRTUAL_CSS_ID, defineFont } from '../src/index.js'
 import type { FontProvider, ResolvedFontVariant } from '../src/types.js'
 
@@ -133,5 +134,90 @@ describe('virtual css module', () => {
 
         expect(assets.some((asset) => asset.file === 'fonts/inter-400-normal.woff2')).toBe(true)
         expect(assets.some((asset) => asset.file === 'fonts/fonts.css')).toBe(true)
+    })
+})
+
+describe('baseUrl override', () => {
+    let tmpDir: string
+
+    beforeEach(() => {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vite-plugin-fonts-'))
+    })
+
+    afterEach(() => {
+        fs.rmSync(tmpDir, { recursive: true, force: true })
+    })
+
+    async function tagsForBase(options: { base?: string, baseUrl?: string }) {
+        const fontSource = path.join(tmpDir, 'inter-400.woff2')
+
+        fs.writeFileSync(fontSource, Buffer.from('woff2'))
+
+        const provider: FontProvider = {
+            name: 'dummy',
+            resolve: async () => [{
+                weight: 400,
+                style: 'normal',
+                files: [{ source: fontSource, format: 'woff2' }],
+            } satisfies ResolvedFontVariant],
+        }
+
+        const plugin = fonts({
+            inject: true,
+            baseUrl: options.baseUrl,
+            fonts: [defineFont('Inter', provider)],
+        })
+
+        const resolvedConfig = {
+            command: 'build',
+            root: tmpDir,
+            base: options.base ?? '/',
+            build: { ssr: false },
+        } as ResolvedConfig
+
+        const configResolved = (typeof plugin.configResolved === 'function'
+            ? plugin.configResolved
+            : plugin.configResolved?.handler) as (config: ResolvedConfig) => void
+
+        configResolved(resolvedConfig)
+
+        const buildStart = (typeof plugin.buildStart === 'function'
+            ? plugin.buildStart
+            : plugin.buildStart?.handler) as (this: { warn: (message: string) => void }) => Promise<void>
+
+        await buildStart.call({ warn: () => {} })
+
+        const generateBundle = (typeof plugin.generateBundle === 'function'
+            ? plugin.generateBundle
+            : plugin.generateBundle?.handler) as unknown as (this: { emitFile: () => void }) => void
+
+        generateBundle.call({ emitFile: () => {} })
+
+        const transformIndexHtml = plugin.transformIndexHtml as {
+            handler: () => Promise<{ attrs?: Record<string, string>, tag: string }[]>
+        }
+
+        return transformIndexHtml.handler()
+    }
+
+    it('overrides vite base for injected tags', async () => {
+        const tags = await tagsForBase({
+            base: '/app/',
+            baseUrl: 'https://cdn.example.com/assets/',
+        })
+
+        const html = tags.map((tag) => tag.tag === 'link' ? `<link${Object.entries(tag.attrs ?? {}).map(([k, v]) => ` ${k}="${v}"`).join('')}>` : '').join('')
+
+        expect(html).toContain('href="https://cdn.example.com/assets/fonts/fonts.css"')
+        expect(html).toContain('href="https://cdn.example.com/assets/fonts/inter-400-normal.woff2"')
+    })
+
+    it('falls back to vite base when baseUrl is omitted', async () => {
+        const tags = await tagsForBase({ base: '/app/' })
+
+        const html = tags.map((tag) => tag.tag === 'link' ? `<link${Object.entries(tag.attrs ?? {}).map(([k, v]) => ` ${k}="${v}"`).join('')}>` : '').join('')
+
+        expect(html).toContain('href="/app/fonts/fonts.css"')
+        expect(html).toContain('href="/app/fonts/inter-400-normal.woff2"')
     })
 })

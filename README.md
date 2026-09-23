@@ -141,6 +141,7 @@ All emitted assets — the generated `fonts.css` and every downloaded font file 
 | `cacheDir`    | `'node_modules/.cache/vite-plugin-fonts'`  | Where downloads are cached.                           |
 | `inject`      | `true`                                     | Inject stylesheet/preload tags into `index.html`.     |
 | `dev`         | `true`                                     | Serve and inject fonts during development.            |
+| `baseUrl`     | Vite's `base`                              | Public base URL for the stylesheet and font files.    |
 
 ## Built-in providers
 

@@ -94,6 +94,7 @@ export default function fonts(options: FontsPluginOptions): Plugin {
     const dev = options.dev ?? true
 
     let config: ResolvedConfig
+    let baseUrl: string
     let cacheDir: string
     let resolvedFamilies: ResolvedFontFamily[] = []
     let fileNames = new Map<string, string>()
@@ -166,6 +167,7 @@ export default function fonts(options: FontsPluginOptions): Plugin {
 
         configResolved(resolved) {
             config = resolved
+            baseUrl = options.baseUrl ?? config.base
             cacheDir = resolveCacheDir(resolved.root, options.cacheDir)
         },
 
@@ -183,14 +185,14 @@ export default function fonts(options: FontsPluginOptions): Plugin {
 
             for (const [source, name] of fileNames) {
                 cssUrlMap.set(source, `./${name}`)
-                publicUrlMap.set(source, withBase(config.base, `${outputDir}/${name}`))
+                publicUrlMap.set(source, withBase(baseUrl, `${outputDir}/${name}`))
             }
 
             const css = generateFontCss(resolvedFamilies, cssUrlMap)
             const cssPath = `${outputDir}/${cssFileName}`
 
             buildPublicUrlMap = publicUrlMap
-            buildCssPublicUrl = withBase(config.base, cssPath)
+            buildCssPublicUrl = withBase(baseUrl, cssPath)
 
             buildTags = [
                 ...preloadTags(collectPreloadUrls(resolvedFamilies, publicUrlMap)),
