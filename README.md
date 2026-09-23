@@ -238,7 +238,7 @@ The `context` provides `fetchText(url)` (cached text download), `fetchFile(url)`
    (`inter-variable-normal-latin.woff2`) and a `fonts.css` stylesheet is generated
    with relative URLs, so it works with any `base` configuration.
 5. The stylesheet link and preload tags are injected into `index.html`.
-6. In dev, the same flow serves files from the dev server under `/__fonts/`.
+6. In dev, the same flow serves files from the dev server under `/__fonts/`, using the dev server's absolute origin (e.g. `http://localhost:5173/__fonts/...`).
 
 ## License
 

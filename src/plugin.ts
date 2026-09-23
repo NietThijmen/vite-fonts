@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { HtmlTagDescriptor, Plugin, ResolvedConfig } from 'vite'
+import type { HtmlTagDescriptor, Plugin, ResolvedConfig, ViteDevServer } from 'vite'
 import { cacheKey, fetchAndCache, fetchTextAndCache, resolveCacheDir } from './cache.js'
 import { validateFonts } from './config.js'
 import { generateFontCss } from './css.js'
 import { parseFontFaceCss } from './css-parser.js'
-import { buildDevUrlMap, createFontMiddleware } from './dev-server.js'
+import { buildDevUrlMap, createFontMiddleware, resolveDevServerOrigin } from './dev-server.js'
 import { assignFileNames } from './naming.js'
 import type {
     FontProviderContext,
@@ -105,6 +105,13 @@ export default function fonts(options: FontsPluginOptions): Plugin {
     let emitted = false
     let devReady: Promise<void> = Promise.resolve()
     let devFailed = false
+    let devServer: ViteDevServer | undefined
+
+    function currentDevUrlMap(): Map<string, string> {
+        const origin = devServer ? resolveDevServerOrigin(devServer) : null
+
+        return buildDevUrlMap(resolvedFamilies, fileNames, origin)
+    }
 
     async function resolveFamilies(warn: (message: string) => void): Promise<void> {
         const context = createProviderContext(cacheDir, warn)
@@ -162,7 +169,7 @@ export default function fonts(options: FontsPluginOptions): Plugin {
                 return ''
             }
 
-            return generateFontCss(resolvedFamilies, buildDevUrlMap(resolvedFamilies, fileNames))
+            return generateFontCss(resolvedFamilies, currentDevUrlMap())
         },
 
         configResolved(resolved) {
@@ -265,7 +272,7 @@ export default function fonts(options: FontsPluginOptions): Plugin {
                     return []
                 }
 
-                const urlMap = buildDevUrlMap(resolvedFamilies, fileNames)
+                const urlMap = currentDevUrlMap()
 
                 return [
                     ...preloadTags(collectPreloadUrls(resolvedFamilies, urlMap)),
@@ -282,6 +289,8 @@ export default function fonts(options: FontsPluginOptions): Plugin {
             if (! dev || definitions.length === 0) {
                 return
             }
+
+            devServer = server
 
             const fontMiddleware = createFontMiddleware()
 
