@@ -283,6 +283,22 @@ The `context` provides `fetchText(url)` (cached text download), `fetchFile(url)`
 5. The stylesheet link and preload tags are injected into `index.html`.
 6. In dev, the same flow serves files from the dev server under `/__fonts/`, using the dev server's absolute origin (e.g. `http://localhost:5173/__fonts/...`).
 
+## Releasing
+
+Add a changeset on the pull request you want to ship:
+
+```sh
+pnpm changeset
+```
+
+CI comments on the pull request with the release status. After the pull request is merged, CI opens a version pull request that bumps `package.json` and `CHANGELOG.md`. Merging that pull request publishes the package.
+
+Changes that should not release (tests, docs, tooling) can use an empty changeset:
+
+```sh
+pnpm changeset --empty
+```
+
 ## License
 
 MIT
