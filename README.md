@@ -183,9 +183,18 @@ fontawesome('Font Awesome 6 Free', 'https://kit.fontawesome.com/xxxxxxxx.js', {
 ```
 
 The kit must use **Web Fonts (CSS)**. SVG+JS kits have no `@font-face` rules to
-download — switch the kit's technology in the Font Awesome settings. Kits that
-limit allowed domains may reject the download from your build machine; open the
-kit or add the machine's host.
+download — switch the kit's technology in the Font Awesome settings.
+
+If the kit limits allowed domains, pass that site as `origin`. It is sent as
+`Origin` and `Referer` so the restricted download is allowed at build time:
+
+```ts
+fontawesome('https://kit.fontawesome.com/xxxxxxxx.js', {
+    origin: 'https://example.com',
+})
+```
+
+A bare host (`example.com`) is treated as `https://example.com`.
 
 Pass `{ icons: false }` if you only want the webfont files and generated
 `@font-face` rules, without the icon stylesheet.

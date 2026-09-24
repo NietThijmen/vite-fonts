@@ -3,7 +3,9 @@ import { parseFontFaceCss } from '../src/css-parser.js'
 import {
     fontawesome,
     fontawesomeProvider,
+    kitRequestHeaders,
     normalizeFontAwesomeKitUrl,
+    normalizeKitOrigin,
     parseFontAwesomeKitConfig,
     resolveFontAwesomeStylesheetUrls,
     rewriteFontAwesomeCssUrls,
@@ -51,13 +53,20 @@ const KIT_JS = `window.FontAwesomeKitConfig = ${JSON.stringify({
 
 function createMockContext(
     resources: Record<string, string>,
-): FontProviderContext & { fetched: string[] } {
+): FontProviderContext & { fetched: string[], headers: Record<string, string>[] } {
     const fetched: string[] = []
+    const headers: Record<string, string>[] = []
+
+    function record(url: string, init?: RequestInit) {
+        fetched.push(url)
+        headers.push((init?.headers ?? {}) as Record<string, string>)
+    }
 
     return {
         fetched,
-        fetchText: async (url) => {
-            fetched.push(url)
+        headers,
+        fetchText: async (url, init) => {
+            record(url, init)
 
             const body = resources[url]
 
@@ -67,8 +76,8 @@ function createMockContext(
 
             return body
         },
-        fetchFile: async (url) => {
-            fetched.push(url)
+        fetchFile: async (url, init) => {
+            record(url, init)
 
             return `/cache/${url.split('/').pop()?.split('?')[0]}`
         },
@@ -111,6 +120,21 @@ describe('fontawesome helpers', () => {
         config.method = 'js'
 
         expect(() => resolveFontAwesomeStylesheetUrls(config)).toThrowError(/SVG\+JS/)
+    })
+
+    it('turns a site origin into Origin and Referer headers', () => {
+        expect(normalizeKitOrigin('https://example.com').href).toBe('https://example.com/')
+        expect(kitRequestHeaders('abc123', 'https://example.com')).toMatchObject({
+            Origin: 'https://example.com',
+            Referer: 'https://example.com/',
+            'fa-kit-token': 'abc123',
+        })
+        expect(kitRequestHeaders(undefined, 'example.com/app')).toMatchObject({
+            Origin: 'https://example.com',
+            Referer: 'https://example.com/app',
+        })
+        expect(kitRequestHeaders()).not.toHaveProperty('Origin')
+        expect(() => normalizeKitOrigin('https://')).toThrowError(/not a valid URL/)
     })
 
     it('rewrites relative webfont urls like the official loader', () => {
@@ -203,6 +227,22 @@ describe('fontawesome provider', () => {
             'https://use.fontawesome.com/releases/v6.7.2/webfonts/free-fa-solid-900.woff2',
         )
         expect(result.extraCss).toContain('.fa-solid')
+    })
+
+    it('sends origin and referer on restricted kit downloads', async () => {
+        const definition = fontawesome(kitUrl, { origin: 'https://example.com' })
+        const context = createMockContext(resources())
+
+        await definition.provider.resolve(definition, context)
+
+        expect(context.headers.length).toBeGreaterThan(2)
+
+        for (const headers of context.headers) {
+            expect(headers).toMatchObject({
+                Origin: 'https://example.com',
+                Referer: 'https://example.com/',
+            })
+        }
     })
 
     it('can omit icon css', async () => {

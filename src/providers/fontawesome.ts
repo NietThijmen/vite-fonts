@@ -20,6 +20,13 @@ export type FontAwesomeOptions = FontOptions & {
      * @default true
      */
     icons?: boolean
+
+    /**
+     * Site origin allowed to use this kit (Font Awesome "Limit Domains").
+     * Sent as `Origin` and `Referer` so a domain-restricted kit can be
+     * downloaded at build time, e.g. `'https://example.com'`.
+     */
+    origin?: string
 }
 
 export type FontAwesomeKitConfig = {
@@ -42,6 +49,7 @@ export type FontAwesomeKitConfig = {
 type FontAwesomeProviderOptions = {
     allFamilies?: boolean
     icons?: boolean
+    origin?: string
 }
 
 /**
@@ -206,9 +214,40 @@ export function rewriteFontAwesomeCssUrls(css: string, config: FontAwesomeKitCon
     return rewritten
 }
 
-export function kitRequestHeaders(token?: string): Record<string, string> {
+/**
+ * Normalize a kit origin to a URL. A bare host (`example.com`) is treated
+ * as `https://example.com/`.
+ */
+export function normalizeKitOrigin(input: string): URL {
+    const trimmed = input.trim()
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+
+    try {
+        return new URL(withProtocol)
+    } catch {
+        throw new Error(
+            `vite-plugin-fonts: fontawesome origin "${input}" is not a valid URL.`,
+        )
+    }
+}
+
+export function kitOriginHeaders(origin?: string): Record<string, string> {
+    if (! origin?.trim()) {
+        return {}
+    }
+
+    const url = normalizeKitOrigin(origin)
+
+    return {
+        Origin: url.origin,
+        Referer: url.href,
+    }
+}
+
+export function kitRequestHeaders(token?: string, origin?: string): Record<string, string> {
     const headers: Record<string, string> = {
         'User-Agent': WOFF2_USER_AGENT,
+        ...kitOriginHeaders(origin),
     }
 
     if (token) {
@@ -263,12 +302,13 @@ export function absolutizeCssUrls(css: string, cssUrl: string, token?: string): 
 async function loadKitCss(
     kitUrl: string,
     context: FontProviderContext,
+    origin?: string,
 ): Promise<{ css: string, cssUrl: string, token?: string, headers: Record<string, string> }> {
-    const source = await context.fetchText(kitUrl, { headers: kitRequestHeaders() })
+    const source = await context.fetchText(kitUrl, { headers: kitRequestHeaders(undefined, origin) })
 
     if (/FontAwesomeKitConfig/.test(source)) {
         const config = parseFontAwesomeKitConfig(source)
-        const headers = kitRequestHeaders(config.token)
+        const headers = kitRequestHeaders(config.token, origin)
         const stylesheetUrls = resolveFontAwesomeStylesheetUrls(config)
         const parts: string[] = []
 
@@ -298,7 +338,7 @@ async function loadKitCss(
 
     if (looksLikeCss(source)) {
         const token = tokenFromKitUrl(kitUrl)
-        const headers = kitRequestHeaders(token)
+        const headers = kitRequestHeaders(token, origin)
 
         return {
             css: absolutizeCssUrls(source, kitUrl, token),
@@ -324,7 +364,7 @@ export function fontawesomeProvider(
         name: 'fontawesome',
 
         async resolve(definition, context) {
-            const { css, cssUrl, headers } = await loadKitCss(resolvedKitUrl, context)
+            const { css, cssUrl, headers } = await loadKitCss(resolvedKitUrl, context, providerOptions.origin)
             let faces = context.parseFontFaces(css)
 
             if (faces.length === 0) {
@@ -363,17 +403,17 @@ export function fontawesome(
     options?: FontAwesomeOptions,
 ): FontDefinition {
     if (typeof kitUrlOrOptions === 'string') {
-        const { icons, ...fontOptions } = options ?? {}
+        const { icons, origin, ...fontOptions } = options ?? {}
 
-        return defineFont(familyOrKitUrl, fontawesomeProvider(kitUrlOrOptions, { icons }), {
+        return defineFont(familyOrKitUrl, fontawesomeProvider(kitUrlOrOptions, { icons, origin }), {
             weights: [400, 900],
             ...fontOptions,
         })
     }
 
-    const { icons, ...fontOptions } = kitUrlOrOptions ?? {}
+    const { icons, origin, ...fontOptions } = kitUrlOrOptions ?? {}
 
-    return defineFont(KIT_FAMILY, fontawesomeProvider(familyOrKitUrl, { allFamilies: true, icons }), {
+    return defineFont(KIT_FAMILY, fontawesomeProvider(familyOrKitUrl, { allFamilies: true, icons, origin }), {
         alias: 'font-awesome',
         preload: false,
         ...fontOptions,
