@@ -18,9 +18,9 @@ export function assignFileNames(families: ResolvedFontFamily[]): Map<string, str
     const sourceWeightMap = buildSourceWeightMap(families)
 
     for (const family of families) {
-        const slug = familyToSlug(family.definition.family)
-
         for (const variant of family.variants) {
+            const slug = familyToSlug(variant.family ?? family.definition.family)
+
             for (const file of variant.files) {
                 if (names.has(file.source)) {
                     continue

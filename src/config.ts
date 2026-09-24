@@ -54,7 +54,7 @@ export function validateFonts(fonts: FontDefinition[]): FontDefinition[] {
         if (typeof font.provider?.resolve !== 'function') {
             throw new Error(
                 `vite-plugin-fonts: Font "${font.family}" has an invalid provider. ` +
-                `Use google(), bunny(), defineFont() with a custom provider, or createCssApiProvider().`,
+                `Use google(), bunny(), fontawesome(), defineFont() with a custom provider, or createCssApiProvider().`,
             )
         }
 

@@ -12,6 +12,8 @@ export {
     adobeProvider,
     bunny,
     bunnyProvider,
+    fontawesome,
+    fontawesomeProvider,
     fontshare,
     fontshareProvider,
     google,
@@ -19,6 +21,7 @@ export {
 } from './providers/index.js'
 
 export type { CssApiProviderOptions } from './providers/css-api.js'
+export type { FontAwesomeKitConfig, FontAwesomeOptions } from './providers/fontawesome.js'
 export type {
     FontDefinition,
     FontDisplay,
@@ -26,6 +29,7 @@ export type {
     FontOptions,
     FontProvider,
     FontProviderContext,
+    FontProviderResult,
     FontsPluginOptions,
     FontStyle,
     FontWeight,

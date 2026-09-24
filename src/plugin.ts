@@ -9,9 +9,17 @@ import { buildDevUrlMap, createFontMiddleware, resolveDevServerOrigin } from './
 import { assignFileNames } from './naming.js'
 import type {
     FontProviderContext,
+    FontProviderResult,
     FontsPluginOptions,
     ResolvedFontFamily,
 } from './types.js'
+
+function unwrapProviderResult(result: FontProviderResult): {
+    variants: ResolvedFontFamily['variants']
+    extraCss?: string
+} {
+    return Array.isArray(result) ? { variants: result } : result
+}
 
 export const VIRTUAL_CSS_ID = 'virtual:fonts.css'
 const RESOLVED_VIRTUAL_CSS_ID = '\0' + VIRTUAL_CSS_ID
@@ -118,9 +126,14 @@ export default function fonts(options: FontsPluginOptions): Plugin {
         const families: ResolvedFontFamily[] = []
 
         for (const definition of definitions) {
+            const { variants, extraCss } = unwrapProviderResult(
+                await definition.provider.resolve(definition, context),
+            )
+
             families.push({
                 definition,
-                variants: await definition.provider.resolve(definition, context),
+                variants,
+                extraCss,
             })
         }
 

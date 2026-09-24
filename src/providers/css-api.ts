@@ -107,12 +107,32 @@ export function createCssApiProvider(options: CssApiProviderOptions): FontProvid
 
             faces = filterFaces(faces, definition, options.name, options.filterSubsets ?? true)
 
-            return downloadFaces(faces, definition, context, headers, options.formats)
+            return downloadFaces(faces, definition, context, headers, options.formats, url)
         },
     }
 }
 
-function filterFaces(
+/**
+ * Resolve a font URL from CSS against the stylesheet it came from.
+ * Handles protocol-relative (`//cdn/...`) and relative (`../webfonts/x.woff2`) URLs.
+ */
+export function resolveCssAssetUrl(url: string, cssUrl?: string): string {
+    if (url.startsWith('//')) {
+        return `https:${url}`
+    }
+
+    if (! cssUrl) {
+        return url
+    }
+
+    try {
+        return new URL(url, cssUrl).href
+    } catch {
+        return url
+    }
+}
+
+export function filterFaces(
     faces: ParsedFontFace[],
     definition: FontDefinition,
     providerName: string,
@@ -196,12 +216,13 @@ function filterFaces(
     return subsetFaces
 }
 
-async function downloadFaces(
+export async function downloadFaces(
     faces: ParsedFontFace[],
-    definition: FontDefinition,
+    _definition: FontDefinition,
     context: FontProviderContext,
     headers: Record<string, string>,
     formats?: FontFormat[],
+    cssUrl?: string,
 ): Promise<ResolvedFontVariant[]> {
     const variants: ResolvedFontVariant[] = []
 
@@ -213,14 +234,14 @@ async function downloadFaces(
                 continue
             }
 
-            // Some APIs (e.g. Fontshare) emit protocol-relative URLs.
-            const url = src.url.startsWith('//') ? `https:${src.url}` : src.url
+            const url = resolveCssAssetUrl(src.url, cssUrl)
 
             files.push({
                 source: await context.fetchFile(url, { headers }),
                 format: src.format,
                 unicodeRange: face.unicodeRange,
                 subset: face.subset,
+                url,
             })
         }
 
@@ -230,7 +251,7 @@ async function downloadFaces(
 
         files.sort((a, b) => FORMAT_PREFERENCE.indexOf(a.format) - FORMAT_PREFERENCE.indexOf(b.format))
 
-        variants.push({ weight: face.weight, style: face.style, files })
+        variants.push({ family: face.family, weight: face.weight, style: face.style, files })
     }
 
     return sortVariants(variants)
