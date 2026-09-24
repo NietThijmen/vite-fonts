@@ -1,0 +1,4 @@
+{
+  "name": "vite-plugin-local-webfonts",
+  "install": "pnpm install --frozen-lockfile"
+}
