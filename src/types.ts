@@ -156,6 +156,12 @@ export type FontsPluginOptions = {
      * @default true
      */
     dev?: boolean
+
+    /**
+     * Override the public base URL used for the generated stylesheet and font
+     * files. Defaults to Vite's configured `base`.
+     */
+    baseUrl?: string
 }
 
 export const FORMAT_MIME: Record<FontFormat, string> = {

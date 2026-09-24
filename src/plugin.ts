@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { HtmlTagDescriptor, Plugin, ResolvedConfig } from 'vite'
+import type { HtmlTagDescriptor, Plugin, ResolvedConfig, ViteDevServer } from 'vite'
 import { cacheKey, fetchAndCache, fetchTextAndCache, resolveCacheDir } from './cache.js'
 import { validateFonts } from './config.js'
 import { generateFontCss } from './css.js'
 import { parseFontFaceCss } from './css-parser.js'
-import { buildDevUrlMap, createFontMiddleware } from './dev-server.js'
+import { buildDevUrlMap, createFontMiddleware, resolveDevServerOrigin } from './dev-server.js'
 import { assignFileNames } from './naming.js'
 import type {
     FontProviderContext,
@@ -94,6 +94,7 @@ export default function fonts(options: FontsPluginOptions): Plugin {
     const dev = options.dev ?? true
 
     let config: ResolvedConfig
+    let baseUrl: string
     let cacheDir: string
     let resolvedFamilies: ResolvedFontFamily[] = []
     let fileNames = new Map<string, string>()
@@ -104,6 +105,13 @@ export default function fonts(options: FontsPluginOptions): Plugin {
     let emitted = false
     let devReady: Promise<void> = Promise.resolve()
     let devFailed = false
+    let devServer: ViteDevServer | undefined
+
+    function currentDevUrlMap(): Map<string, string> {
+        const origin = devServer ? resolveDevServerOrigin(devServer) : null
+
+        return buildDevUrlMap(resolvedFamilies, fileNames, origin)
+    }
 
     async function resolveFamilies(warn: (message: string) => void): Promise<void> {
         const context = createProviderContext(cacheDir, warn)
@@ -161,11 +169,12 @@ export default function fonts(options: FontsPluginOptions): Plugin {
                 return ''
             }
 
-            return generateFontCss(resolvedFamilies, buildDevUrlMap(resolvedFamilies, fileNames))
+            return generateFontCss(resolvedFamilies, currentDevUrlMap())
         },
 
         configResolved(resolved) {
             config = resolved
+            baseUrl = options.baseUrl ?? config.base
             cacheDir = resolveCacheDir(resolved.root, options.cacheDir)
         },
 
@@ -183,14 +192,14 @@ export default function fonts(options: FontsPluginOptions): Plugin {
 
             for (const [source, name] of fileNames) {
                 cssUrlMap.set(source, `./${name}`)
-                publicUrlMap.set(source, withBase(config.base, `${outputDir}/${name}`))
+                publicUrlMap.set(source, withBase(baseUrl, `${outputDir}/${name}`))
             }
 
             const css = generateFontCss(resolvedFamilies, cssUrlMap)
             const cssPath = `${outputDir}/${cssFileName}`
 
             buildPublicUrlMap = publicUrlMap
-            buildCssPublicUrl = withBase(config.base, cssPath)
+            buildCssPublicUrl = withBase(baseUrl, cssPath)
 
             buildTags = [
                 ...preloadTags(collectPreloadUrls(resolvedFamilies, publicUrlMap)),
@@ -263,7 +272,7 @@ export default function fonts(options: FontsPluginOptions): Plugin {
                     return []
                 }
 
-                const urlMap = buildDevUrlMap(resolvedFamilies, fileNames)
+                const urlMap = currentDevUrlMap()
 
                 return [
                     ...preloadTags(collectPreloadUrls(resolvedFamilies, urlMap)),
@@ -280,6 +289,8 @@ export default function fonts(options: FontsPluginOptions): Plugin {
             if (! dev || definitions.length === 0) {
                 return
             }
+
+            devServer = server
 
             const fontMiddleware = createFontMiddleware()
 

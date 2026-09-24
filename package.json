@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-local-webfonts",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Download web fonts (Google Fonts, Bunny Fonts, and more) into your Vite build output",
   "author": "NietThijmen <53520119+NietThijmen@users.noreply.github.com>",
   "homepage": "https://github.com/NietThijmen/vite-fonts#readme",
