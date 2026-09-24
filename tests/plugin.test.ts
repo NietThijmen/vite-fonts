@@ -135,6 +135,42 @@ describe('virtual css module', () => {
         expect(assets.some((asset) => asset.file === 'fonts/inter-400-normal.woff2')).toBe(true)
         expect(assets.some((asset) => asset.file === 'fonts/fonts.css')).toBe(true)
     })
+
+    it('emits rewritten extra css from kit providers', async () => {
+        const fontSource = path.join(tmpDir, 'fa-solid.woff2')
+
+        fs.writeFileSync(fontSource, Buffer.from('woff2'))
+        fs.writeFileSync(path.join(tmpDir, 'main.js'), '')
+        fs.writeFileSync(path.join(tmpDir, 'index.html'), '<script type="module" src="/main.js"></script>')
+
+        const provider: FontProvider = {
+            name: 'fontawesome',
+            resolve: async () => ({
+                variants: [{
+                    family: 'Font Awesome 6 Free',
+                    weight: 900,
+                    style: 'normal',
+                    files: [{
+                        source: fontSource,
+                        format: 'woff2',
+                        url: 'https://ka-f.example/webfonts/solid.woff2?token=abc',
+                    }],
+                } satisfies ResolvedFontVariant],
+                extraCss: '@font-face{font-family:"Font Awesome 6 Free";src:url(https://ka-f.example/webfonts/solid.woff2?token=abc) format("woff2")}.fa-user{--fa:"\\f007"}',
+            }),
+        }
+
+        await buildWithFonts(tmpDir, {
+            inject: false,
+            fonts: [defineFont('Font Awesome', provider, { alias: 'font-awesome' })],
+        })
+
+        const emittedCss = fs.readFileSync(path.join(tmpDir, 'dist', 'fonts', 'fonts.css'), 'utf-8')
+
+        expect(emittedCss).toContain('.fa-user')
+        expect(emittedCss).toContain('font-awesome-6-free-900-normal.woff2')
+        expect(emittedCss).not.toContain('ka-f.example')
+    })
 })
 
 describe('baseUrl override', () => {

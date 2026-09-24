@@ -10,7 +10,11 @@ import {
     fontshareProvider,
     googleProvider,
 } from '../src/providers/index.js'
-import type { FontProviderContext } from '../src/types.js'
+import type { FontProviderContext, FontProviderResult, ResolvedFontVariant } from '../src/types.js'
+
+function variantsOf(result: FontProviderResult): ResolvedFontVariant[] {
+    return Array.isArray(result) ? result : result.variants
+}
 
 const CSS = `/* latin */
 @font-face {
@@ -88,7 +92,7 @@ describe('createCssApiProvider', () => {
         const definition = defineFont('Inter', provider, { weights: [400, 700], subsets: ['latin'] })
         const context = createMockContext(CSS)
 
-        const variants = await provider.resolve(definition, context)
+        const variants = variantsOf(await provider.resolve(definition, context))
 
         expect(context.fetched[0]).toBe(
             'https://example.com/css2?family=Inter:wght@400;700&display=swap',
@@ -100,6 +104,7 @@ describe('createCssApiProvider', () => {
         ])
         expect(variants).toEqual([
             {
+                family: 'Inter',
                 weight: 400,
                 style: 'normal',
                 files: [{
@@ -107,9 +112,11 @@ describe('createCssApiProvider', () => {
                     format: 'woff2',
                     unicodeRange: 'U+0000-00FF',
                     subset: 'latin',
+                    url: 'https://example.com/inter-latin-400.woff2',
                 }],
             },
             {
+                family: 'Inter',
                 weight: 700,
                 style: 'normal',
                 files: [{
@@ -117,6 +124,7 @@ describe('createCssApiProvider', () => {
                     format: 'woff2',
                     unicodeRange: 'U+0000-00FF',
                     subset: 'latin',
+                    url: 'https://example.com/inter-latin-700.woff2',
                 }],
             },
         ])
@@ -138,10 +146,32 @@ describe('createCssApiProvider', () => {
         const definition = defineFont('Inter', provider, { weights: [400], subsets: ['latin'] })
         const context = createMockContext(kitCss)
 
-        const variants = await provider.resolve(definition, context)
+        const variants = variantsOf(await provider.resolve(definition, context))
 
         expect(variants).toHaveLength(1)
         expect(variants[0]!.files[0]!.source).toBe('/cache/inter-latin-400.woff2')
+    })
+
+    it('resolves relative font urls against the css url', async () => {
+        const relativeCss = `@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  src: url(../webfonts/inter-400.woff2) format('woff2');
+}`
+        const provider = createCssApiProvider({
+            name: 'relative',
+            baseUrl: 'https://example.com/releases/v1/css/all.css',
+            buildUrl: (_definition, baseUrl) => baseUrl,
+            filterSubsets: false,
+        })
+        const definition = defineFont('Inter', provider, { weights: [400] })
+        const context = createMockContext(relativeCss)
+
+        const variants = variantsOf(await provider.resolve(definition, context))
+
+        expect(context.fetched).toContain('https://example.com/releases/v1/webfonts/inter-400.woff2')
+        expect(variants[0]!.files[0]!.url).toBe('https://example.com/releases/v1/webfonts/inter-400.woff2')
     })
 
     it('throws a helpful error listing available families', async () => {
@@ -182,7 +212,7 @@ describe('createCssApiProvider', () => {
         const definition = defineFont('Satoshi', provider, { weights: [400] })
         const context = createMockContext(fontshareCss)
 
-        const variants = await provider.resolve(definition, context)
+        const variants = variantsOf(await provider.resolve(definition, context))
 
         expect(variants).toHaveLength(1)
         // Protocol-relative URLs are normalized to https.
@@ -200,7 +230,7 @@ describe('createCssApiProvider', () => {
         const definition = defineFont('Inter', provider, { weights: [400, 700], subsets: ['latin'] })
         const context = createMockContext(CSS)
 
-        const variants = await provider.resolve(definition, context)
+        const variants = variantsOf(await provider.resolve(definition, context))
 
         expect(variants).toHaveLength(1)
         expect(variants[0]!.weight).toBe(700)
@@ -246,7 +276,7 @@ describe('built-in providers', () => {
         const definition = fontshare('Satoshi', { weights: [400, 700] })
         const context = createMockContext(fontshareCss)
 
-        const variants = await fontshareProvider.resolve(definition, context)
+        const variants = variantsOf(await fontshareProvider.resolve(definition, context))
 
         expect(variants).toHaveLength(2)
         // Only woff2 is downloaded (formats option), normalized to https.
@@ -290,7 +320,7 @@ describe('built-in providers', () => {
         const definition = adobe('proxima-nova', 'https://use.typekit.net/abcdefg.css', { weights: [400] })
         const context = createMockContext(kitCss)
 
-        const variants = await adobeProvider('https://use.typekit.net/abcdefg.css').resolve(definition, context)
+        const variants = variantsOf(await adobeProvider('https://use.typekit.net/abcdefg.css').resolve(definition, context))
 
         expect(variants).toHaveLength(1)
         expect(variants[0]!.weight).toBe(400)

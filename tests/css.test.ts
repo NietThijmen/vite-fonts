@@ -72,6 +72,31 @@ describe('assignFileNames', () => {
 
         expect(names.get('/cache/v')).toBe('inter-variable-normal-latin.woff2')
     })
+
+    it('names files from the variant family when a kit spans several families', () => {
+        const family: ResolvedFontFamily = {
+            definition: defineFont('Font Awesome', dummyProvider, { alias: 'font-awesome' }),
+            variants: [
+                {
+                    family: 'Font Awesome 6 Free',
+                    weight: 400,
+                    style: 'normal',
+                    files: [{ source: '/cache/regular', format: 'woff2' }],
+                },
+                {
+                    family: 'Font Awesome 6 Brands',
+                    weight: 400,
+                    style: 'normal',
+                    files: [{ source: '/cache/brands', format: 'woff2' }],
+                },
+            ],
+        }
+
+        const names = assignFileNames([family])
+
+        expect(names.get('/cache/regular')).toBe('font-awesome-6-free-400-normal.woff2')
+        expect(names.get('/cache/brands')).toBe('font-awesome-6-brands-400-normal.woff2')
+    })
 })
 
 describe('generateFontCss', () => {
@@ -128,5 +153,51 @@ describe('generateFontCss', () => {
             '    url("./x.woff") format("woff");\n' +
             '  unicode-range: U+0000-00FF;',
         )
+    })
+
+    it('rewrites extra css font urls and drops formats that were not downloaded', () => {
+        const family: ResolvedFontFamily = {
+            definition: defineFont('Font Awesome', dummyProvider, { alias: 'font-awesome' }),
+            variants: [{
+                family: 'Font Awesome 6 Free',
+                weight: 900,
+                style: 'normal',
+                files: [{
+                    source: '/cache/solid',
+                    format: 'woff2',
+                    url: 'https://ka-f.example/webfonts/solid.woff2?token=abc',
+                }],
+            }],
+            extraCss: [
+                '@font-face{font-family:"Font Awesome 6 Free";',
+                'src:url(https://ka-f.example/webfonts/solid.woff2?token=abc) format("woff2"),',
+                'url(https://ka-f.example/webfonts/solid.ttf?token=abc) format("truetype")}',
+                '.fa-user{--fa:"\\f007"}',
+            ].join(''),
+        }
+
+        const css = generateFontCss([family], new Map([['/cache/solid', './solid.woff2']]))
+
+        expect(css).toContain('url(./solid.woff2) format("woff2")')
+        expect(css).not.toContain('solid.ttf')
+        expect(css).toContain('.fa-user')
+        expect(css).toContain('--font-font-awesome')
+    })
+
+    it('uses the original family name from a variant when generating faces', () => {
+        const family: ResolvedFontFamily = {
+            definition: defineFont('Font Awesome', dummyProvider, { alias: 'font-awesome' }),
+            variants: [{
+                family: 'Font Awesome 6 Brands',
+                weight: 400,
+                style: 'normal',
+                files: [{ source: '/cache/brands', format: 'woff2' }],
+            }],
+        }
+
+        const css = generateFontCss([family], new Map([['/cache/brands', './brands.woff2']]))
+
+        expect(css).toContain('font-family: "Font Awesome 6 Brands";')
+        expect(css).not.toContain('font-family: "Font Awesome";')
     })
 })

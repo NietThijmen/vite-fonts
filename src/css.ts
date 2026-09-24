@@ -38,10 +38,12 @@ export function generateFontFaces(
             rangeGroups.set(file.unicodeRange!, group)
         }
 
+        const familyName = variant.family ?? definition.family
+
         for (const [unicodeRange, files] of rangeGroups) {
             rules.push([
                 '@font-face {',
-                `  font-family: "${definition.family}";`,
+                `  font-family: "${familyName}";`,
                 `  font-style: ${variant.style};`,
                 `  font-weight: ${String(variant.weight)};`,
                 `  font-display: ${definition.display};`,
@@ -54,7 +56,7 @@ export function generateFontFaces(
         if (nonRangedFiles.length > 0) {
             rules.push([
                 '@font-face {',
-                `  font-family: "${definition.family}";`,
+                `  font-family: "${familyName}";`,
                 `  font-style: ${variant.style};`,
                 `  font-weight: ${String(variant.weight)};`,
                 `  font-display: ${definition.display};`,
@@ -86,11 +88,61 @@ export function generateFontClass(family: ResolvedFontFamily): string {
     return `.font-${definition.alias} {\n  font-family: var(${definition.variable});\n}`
 }
 
+const FONT_FILE_RE = /\.(woff2?|ttf|otf|eot)(?:\?|#|$)/i
+
+/**
+ * Rewrite downloaded font URLs in provider-supplied CSS, and drop remote
+ * font files that were not downloaded (e.g. TTF fallbacks when only WOFF2
+ * is kept).
+ */
+export function rewriteExtraCss(css: string, family: ResolvedFontFamily, urlMap: FontUrlMap): string {
+    const replacements = new Map<string, string>()
+
+    for (const variant of family.variants) {
+        for (const file of variant.files) {
+            const mapped = urlMap.get(file.source)
+
+            if (file.url && mapped) {
+                replacements.set(file.url, mapped)
+            }
+        }
+    }
+
+    const rewritten = css.replace(
+        /url\(\s*(['"]?)([^'")]+)\1\s*\)(\s*format\(\s*(['"]?)[^'")]*\4\s*\))?/g,
+        (full, quote: string, url: string, formatPart: string = '') => {
+            const mapped = replacements.get(url)
+
+            if (mapped) {
+                return `url(${quote}${mapped}${quote})${formatPart}`
+            }
+
+            if (/^https?:\/\//i.test(url) && FONT_FILE_RE.test(url)) {
+                return ''
+            }
+
+            return full
+        },
+    )
+
+    return rewritten
+        .replace(/src\s*:\s*,+/g, 'src:')
+        .replace(/,\s*,+/g, ',')
+        .replace(/,\s*;/g, ';')
+        .replace(/,\s*}/g, '}')
+}
+
 export function generateFontCss(
     families: ResolvedFontFamily[],
     urlMap: FontUrlMap,
 ): string {
-    const parts = families.map((family) => generateFontFaces(family, urlMap))
+    const parts = families.map((family) => {
+        if (family.extraCss) {
+            return rewriteExtraCss(family.extraCss, family, urlMap)
+        }
+
+        return generateFontFaces(family, urlMap)
+    })
 
     parts.push(generateCssVariables(families))
     parts.push(families.map(generateFontClass).join('\n\n'))

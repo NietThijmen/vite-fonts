@@ -58,9 +58,16 @@ export type ResolvedFontFile = {
     unicodeRange?: string
     /** Subset label (e.g. "latin"), used to build readable file names. */
     subset?: string
+    /** Original remote URL, used to rewrite extra CSS onto local files. */
+    url?: string
 }
 
 export type ResolvedFontVariant = {
+    /**
+     * Original family name from the source CSS. Used when one definition
+     * downloads several families (e.g. a Font Awesome kit).
+     */
+    family?: string
     weight: FontWeight
     style: FontStyle
     files: ResolvedFontFile[]
@@ -69,6 +76,11 @@ export type ResolvedFontVariant = {
 export type ResolvedFontFamily = {
     definition: FontDefinition
     variants: ResolvedFontVariant[]
+    /**
+     * Additional CSS to emit as-is after rewriting downloaded font URLs
+     * (e.g. Font Awesome icon classes).
+     */
+    extraCss?: string
 }
 
 export type ParsedFontFace = {
@@ -110,10 +122,18 @@ export type FontProviderContext = {
  *
  * For sources exposing a CSS API that returns `@font-face` rules, use the
  * `createCssApiProvider` helper instead of implementing this by hand.
+ *
+ * Providers may return either a variant list or `{ variants, extraCss }`
+ * when they also need to emit source CSS (icon classes, etc.).
  */
+export type FontProviderResult = ResolvedFontVariant[] | {
+    variants: ResolvedFontVariant[]
+    extraCss?: string
+}
+
 export interface FontProvider {
     name: string
-    resolve: (definition: FontDefinition, context: FontProviderContext) => Promise<ResolvedFontVariant[]>
+    resolve: (definition: FontDefinition, context: FontProviderContext) => Promise<FontProviderResult>
 }
 
 export type FontsPluginOptions = {

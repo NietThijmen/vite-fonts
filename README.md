@@ -6,7 +6,7 @@
 [![license](https://img.shields.io/npm/l/vite-plugin-local-webfonts)](LICENSE)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/vite-plugin-local-webfonts)](https://bundlephobia.com/package/vite-plugin-local-webfonts)
 
-Download web fonts from [Google Fonts](https://fonts.google.com), [Bunny Fonts](https://fonts.bunny.net), [Fontshare](https://www.fontshare.com), [Adobe Fonts](https://fonts.adobe.com), and other sources into your Vite build output — no external CSS requests at runtime, full privacy, and easy to extend with additional font sources.
+Download web fonts from [Google Fonts](https://fonts.google.com), [Bunny Fonts](https://fonts.bunny.net), [Fontshare](https://www.fontshare.com), [Adobe Fonts](https://fonts.adobe.com), [Font Awesome](https://fontawesome.com) kits, and other sources into your Vite build output — no external CSS requests at runtime, full privacy, and easy to extend with additional font sources.
 
 ## Features
 
@@ -15,7 +15,7 @@ Download web fonts from [Google Fonts](https://fonts.google.com), [Bunny Fonts](
 - Injects the stylesheet and `<link rel="preload">` tags into your `index.html`
 - Serves the fonts from the dev server during development
 - Caches downloads in `node_modules/.cache/vite-plugin-fonts` for fast rebuilds
-- Built-in providers for Google Fonts, Bunny Fonts, Fontshare, and Adobe Fonts
+- Built-in providers for Google Fonts, Bunny Fonts, Fontshare, Adobe Fonts, and Font Awesome kits
 - Extensible: add any other font source with a few lines of code
 - Zero runtime dependencies
 
@@ -30,7 +30,7 @@ npm install -D vite-plugin-local-webfonts
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
-import fonts, { adobe, bunny, fontshare, google } from 'vite-plugin-local-webfonts'
+import fonts, { adobe, bunny, fontawesome, fontshare, google } from 'vite-plugin-local-webfonts'
 
 export default defineConfig({
     plugins: [
@@ -44,6 +44,7 @@ export default defineConfig({
                 bunny('Roboto', { weights: [400, 700] }),
                 fontshare('Satoshi', { weights: [400, 700] }),
                 adobe('proxima-nova', 'https://use.typekit.net/abcdefg.css'),
+                fontawesome('https://kit.fontawesome.com/xxxxxxxx.js'),
             ],
         }),
     ],
@@ -151,10 +152,43 @@ All emitted assets — the generated `fonts.css` and every downloaded font file 
 | Bunny Fonts | `bunny(family, options?)`                | GDPR-friendly drop-in replacement for Google Fonts.           |
 | Fontshare   | `fontshare(family, options?)`            | Downloads WOFF2 only.                                         |
 | Adobe Fonts | `adobe(family, kitUrl, options?)`        | Requires your kit URL, e.g. `https://use.typekit.net/xyz.css`. |
+| Font Awesome | `fontawesome(kitUrl, options?)`          | Kit JS/CSS URL or kit token. Downloads webfonts and icon CSS.  |
+| Font Awesome | `fontawesome(family, kitUrl, options?)`  | Same as Adobe: keep one family from the kit.                   |
 
 Each provider also exports its underlying `FontProvider` (`googleProvider`,
-`bunnyProvider`, `fontshareProvider`, `adobeProvider(kitUrl)`) in case you want
-to reuse it with `defineFont` directly.
+`bunnyProvider`, `fontshareProvider`, `adobeProvider(kitUrl)`,
+`fontawesomeProvider(kitUrl)`) in case you want to reuse it with `defineFont`
+directly.
+
+### Font Awesome kits
+
+Font Awesome kits are the same idea as Adobe Fonts kits: one URL serves CSS
+that points at webfont files. `fontawesome()` reuses that kit flow and also
+keeps the icon classes (`.fa-solid`, `.fa-user`, …) so `<i class="fa-solid fa-user"></i>`
+keeps working after the files are local.
+
+```ts
+// Easiest: pass the embed URL (or just the kit token). Every family in the
+// kit is downloaded, and the icon CSS is rewritten onto the local files.
+fontawesome('https://kit.fontawesome.com/xxxxxxxx.js')
+fontawesome('xxxxxxxx')
+
+// CSS-only embed or a versioned stylesheet also works:
+fontawesome('https://use.fontawesome.com/releases/v6.7.2/css/all.css')
+
+// One family, same shape as adobe():
+fontawesome('Font Awesome 6 Free', 'https://kit.fontawesome.com/xxxxxxxx.js', {
+    weights: [400, 900],
+})
+```
+
+The kit must use **Web Fonts (CSS)**. SVG+JS kits have no `@font-face` rules to
+download — switch the kit's technology in the Font Awesome settings. Kits that
+limit allowed domains may reject the download from your build machine; open the
+kit or add the machine's host.
+
+Pass `{ icons: false }` if you only want the webfont files and generated
+`@font-face` rules, without the icon stylesheet.
 
 ## Adding font sources
 

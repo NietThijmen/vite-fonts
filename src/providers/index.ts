@@ -67,3 +67,8 @@ export function fontshare(family: string, options?: FontOptions): FontDefinition
 export function adobe(family: string, kitUrl: string, options?: FontOptions): FontDefinition {
     return defineFont(family, adobeProvider(kitUrl), options)
 }
+
+export {
+    fontawesome,
+    fontawesomeProvider,
+} from './fontawesome.js'
